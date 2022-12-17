@@ -38,9 +38,17 @@ class WiktionaryFetcher:
             for i, line in enumerate(file):
                 entry = json.loads(line)
                 word = entry["word"]
+
+                # if the filename exists, rename to {word}_01.json (or _02, _03 etc.)
+                outfile = f"{word}.json"
+                nameidx = 0
+                while (Path(outdir / outfile).is_file()):
+                    outfile = f"{word}_{nameidx:02}.json"
+                    nameidx += 1
+
                 try:
                     with open(
-                        outdir / f"{word}.json",
+                        outdir / outfile,
                         mode="w",
                         encoding="utf-8",
                     ) as outfile:
@@ -56,6 +64,8 @@ class WiktionaryFetcher:
     @staticmethod
     @functools.lru_cache
     def _get_word_json(dict_dir: Path, word: str) -> dict:
+        # TODO: handle words with multiple word senses
+
         try:
             with open(dict_dir / f"{word}.json", encoding="utf-8") as file:
                 return json.load(file)
