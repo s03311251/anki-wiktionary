@@ -3,6 +3,9 @@ from __future__ import annotations
 import os
 import time
 from typing import TYPE_CHECKING, Any, Callable, cast
+from urllib.parse import unquote
+
+import requests
 
 try:
     from anki.utils import strip_html
@@ -219,8 +222,10 @@ class WiktionaryFetcherDialog(QDialog):
                 max=len(self.notes),
             )
 
-        for i, note in enumerate(self.notes):
+        for note in self.notes:
             word = strip_html(note[word_field]).strip()
+            if not word:
+                continue
             need_updating = False
             try:
                 for field_tuple in field_tuples:
@@ -281,7 +286,21 @@ class WiktionaryFetcherDialog(QDialog):
 
     def _get_audio(self, word: str) -> str:
         downloader = cast(WiktionaryFetcher, self.downloader)
-        return downloader.get_audio(word)
+        url = downloader.get_audio_url(word)
+
+        http_session = requests.Session()
+        # https://meta.wikimedia.org/wiki/User-Agent_policy
+        headers = {
+            "User-Agent": "Mozilla/5.0 (compatible; Anki Wiktionary add-on, https://github.com/s03311251/anki-wiktionary)"
+        }
+        try:
+            with http_session.get(url, headers=headers, timeout=30) as response:
+                response.raise_for_status()
+                data = response.content
+        except Exception:
+            return ""
+        filename = self.mw.col.media.write_data(unquote(os.path.basename(url)), data)
+        return "[sound:" + filename + "]"
 
     def _get_etymology(self, word: str) -> str:
         downloader = cast(WiktionaryFetcher, self.downloader)
@@ -294,6 +313,6 @@ class WiktionaryFetcherDialog(QDialog):
             return ""
         formatted = "<ul>"
         for key, value in declensions.items():
-            formatted += f"  <li>{key}: {', '.join(value)}</li>\r\n"
+            formatted += f"<li>{key}: {', '.join(value)}</li>"
         formatted += "</ul>"
         return formatted
