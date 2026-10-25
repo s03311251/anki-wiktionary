@@ -202,21 +202,20 @@ class WiktionaryFetcher:
             if isinstance(form.get("source"), str) and form.get("source").lower() == grammatical_form:
                 tags = form.get("tags", [])
 
-                # "table-tags" and "inflection-template" seems like useless stuffs
-                useless_tags = ["table-tags", "inflection-template"]
+                # "inflection-template" seems like useless stuffs
+                useless_tags = ["inflection-template"]
 
                 for useless_tag in useless_tags:
                     if useless_tag in tags:
                         break
-
-                else:
+                else:                    
                     # append {"tags": "form"} to declensions / conjugations
                     key = ", ".join(tags)
                     value = form.get("form")
+                    # "table-tags" can have useful info, e.g., strong verb / weak noun, but "no-table-tags" is useless
+                    if "table-tags" in tags and value == "no-table-tags":
+                        continue
                     outputs.update({key: outputs.get(key, set()) | {value}})
-                    if "auxiliary" in tags:
-                        print("auxiliary form found for word '%s': %s", key, value)
-                        print(outputs[key])
         return outputs
 
     # "declension": forms in the declension table
